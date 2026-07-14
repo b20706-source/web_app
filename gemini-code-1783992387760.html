@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연속 돌파 극악 확률 게임</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --accent-color: #0f3460;
+            --text-color: #e94560;
+            --light-text: #ffffff;
+            --muted-text: #b0b0b0;
+            --success-color: #4e9f3d;
+            --fail-color: #d83a56;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--light-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin: 20px 0 40px 0;
+        }
+
+        header h1 {
+            color: var(--text-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        header p {
+            color: var(--muted-text);
+            font-size: 1.1rem;
+        }
+
+        /* 방패 UI 스타일 */
+        .shield-container {
+            background-color: rgba(15, 52, 96, 0.6);
+            border: 2px solid #3498db;
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+        }
+
+        .flow-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .round-node {
+            background-color: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            position: relative;
+            min-width: 150px;
+            transition: all 0.3s ease;
+        }
+
+        .round-node.active {
+            border-color: var(--text-color);
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+            background-color: #1f305e;
+            transform: scale(1.05);
+        }
+
+        .round-node.clear {
+            background-color: var(--success-color);
+            border-color: #71e157;
+        }
+
+        .round-node h2 {
+            font-size: 1.1rem;
+            color: var(--light-text);
+        }
+
+        .round-node p {
+            font-size: 0.8rem;
+            color: var(--muted-text);
+        }
+
+        .round-node.clear p, .round-node.clear h2 {
+            color: white;
+        }
+
+        .arrow {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 700px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .play-area {
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .target-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 15px;
+        }
+
+        .target-info {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .sub-indicator {
+            background-color: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: #f1c40f;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .fish-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .fish-easy { background-color: #2980b9; color: white; }
+        .fish-normal { background-color: #27ae60; color: white; }
+        .fish-hard { background-color: #d35400; color: white; }
+        .fish-legend { background-color: #8e44ad; color: white; }
+
+        .action-btn {
+            background-color: var(--text-color);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+            margin-top: 15px;
+            z-index: 10;
+        }
+
+        .action-btn:hover {
+            background-color: #f05470;
+            transform: scale(1.05);
+        }
+
+        .choices-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .choice-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: 2px solid transparent;
+            padding: 15px 25px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 100px;
+        }
+
+        .choice-btn:hover {
+            border-color: var(--text-color);
+            background-color: #163b6e;
+        }
+
+        .result-screen {
+            font-size: 1.6rem;
+            margin: 20px 0;
+            font-weight: bold;
+            white-space: pre-line;
+            z-index: 10;
+        }
+
+        .result-success { color: var(--success-color); }
+        .result-fail { color: var(--fail-color); }
+
+        .fishing-bobber {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .fishing-bobber.active {
+            display: block;
+            animation: float 0.8s infinite ease-in-out;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* 검 강화 이펙트 */
+        .sword-display {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .sword-normal { filter: drop-shadow(0 0 2px #fff); }
+        .sword-rare { animation: glow-rare 0.6s infinite alternate; }
+        @keyframes glow-rare {
+            from { filter: drop-shadow(0 0 4px #00d2ff) drop-shadow(0 0 8px #00d2ff); }
+            to { filter: drop-shadow(0 0 10px #00d2ff) drop-shadow(0 0 16px #0055ff); }
+        }
+        .sword-epic { animation: glow-epic 0.5s infinite alternate; }
+        @keyframes glow-epic {
+            from { filter: drop-shadow(0 0 6px #e94560) drop-shadow(0 0 12px #e94560); }
+            to { filter: drop-shadow(0 0 15px #ff2a4b) drop-shadow(0 0 22px #ff2a4b); transform: scale(1.03); }
+        }
+        .sword-ancient { animation: glow-ancient 0.4s infinite alternate; }
+        @keyframes glow-ancient {
+            from { filter: drop-shadow(0 0 8px #f1c40f) drop-shadow(0 0 16px #f39c12); transform: scale(1.05) rotate(-2deg); }
+            to { filter: drop-shadow(0 0 20px #f1c40f) drop-shadow(0 0 30px #e67e22); transform: scale(1.07) rotate(2deg); }
+        }
+        .sword-mythic { animation: glow-mythic 0.2s infinite alternate; }
+        @keyframes glow-mythic {
+            from { filter: drop-shadow(0 0 15px #fff) drop-shadow(0 0 30px #9b59b6); transform: scale(1.15); }
+            to { filter: drop-shadow(0 0 25px #9b59b6) drop-shadow(0 0 45px #8e44ad); transform: scale(1.2); }
+        }
+
+        .grid-5x5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-width: 320px;
+            margin-top: 15px;
+        }
+        .grid-tile {
+            width: 55px;
+            height: 55px;
+            background-color: #34495e;
+            border: 2px solid #2c3e50;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .grid-tile:hover {
+            background-color: #4b6584;
+        }
+
+        /* 우승 세레머니 연출 스타일 */
+        .podium-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 220px;
+            width: 100%;
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .champion-player {
+            font-size: 4.5rem;
+            animation: bounce 0.6s infinite alternate;
+            z-index: 5;
+            position: relative;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-15px); }
+        }
+
+        .gold-podium {
+            width: 160px;
+            height: 70px;
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            border: 3px solid #fff;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1a1a2e;
+            z-index: 4;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+
+        .crowd-cheering {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            padding: 10px 0;
+            font-size: 2rem;
+            z-index: 3;
+            animation: crowd-wave 0.4s infinite alternate;
+        }
+
+        @keyframes crowd-wave {
+            from { transform: translateY(0); }
+            to { transform: translateY(-8px); }
+        }
+
+        /* 폭죽 조각 이펙트 */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f1c40f;
+            border-radius: 50%;
+            animation: confetti-fall 2.5s infinite linear;
+            opacity: 0.8;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-50px) translateX(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(320px) translateX(var(--x-move)) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🏆 지옥 난이도! 5단계 연속 돌파 확률 게임</h1>
+        <p>1라운드부터 5라운드까지 순서를 재배치한 데스매치 확률 테스트</p>
+    </header>
+
+    <!-- 방패 표시 잔여 UI -->
+    <div class="shield-container" id="shieldDisplay">
+        🛡️ 남은 방패: 🛡️ 🛡️ 🛡️ 🛡️ 🛡️ 🛡️ 🛡️ 🛡️ 🛡️ 🛡️
+    </div>
+
+    <div class="flow-container">
+        <div class="round-node" id="node1">
+            <h2>🎣 1라운드</h2>
+            <p>고정 타겟 낚시</p>
+        </div>
+        <div class="arrow">➡️</div>
+        <div class="round-node" id="node2">
+            <h2>🪙 2라운드</h2>
+            <p>동전 맞추기</p>
+        </div>
+        <div class="arrow">➡️</div>
+        <div class="round-node" id="node3">
+            <h2>💣 3라운드</h2>
+            <p>지뢰 매트릭스</p>
+        </div>
+        <div class="arrow">➡️</div>
+        <div class="round-node" id="node4">
+            <h2>🚪 4라운드</h2>
+            <p>연속 문의 방</p>
+        </div>
+        <div class="arrow">➡️</div>
+        <div class="round-node" id="node5">
+            <h2>⚔️ 5라운드</h2>
+            <p>10강 절대검</p>
+        </div>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <div class="play-area" id="playArea">
+            <!-- 게임 화면 동적 생성 -->
+        </div>
+    </div>
+
+    <script>
+        let currentRound = 1;
+        let highestRoundReached = 1; 
+        let shields = 10; // 기본 방패 10개 제공
+        
+        const fishPool = [
+            { name: "멸치", prob: 95, rarity: "easy", emoji: "🐟" },
+            { name: "고등어", prob: 80, rarity: "easy", emoji: "🐟" },
+            { name: "붕어", prob: 70, rarity: "normal", emoji: "🐠" },
+            { name: "연어", prob: 50, rarity: "normal", emoji: "🐟" },
+            { name: "복어", prob: 35, rarity: "hard", emoji: "🐡" },
+            { name: "참치", prob: 20, rarity: "hard", emoji: "🐟" },
+            { name: "전설의 돗돔", prob: 8, rarity: "legend", emoji: "🦑" }
+        ];
+        let fixedFish = null; 
+
+        let currentDoorStage = 0; 
+        const doorStagesConfig = [2, 3, 4, 5];
+
+        let currentSwordEnhance = 0; 
+
+        // 3라운드 고정용 안전 타일 변수
+        let fixedSafeTile = null;
+
+        // 방패 UI 업데이트 함수
+        function updateShieldUI() {
+            const display = document.getElementById('shieldDisplay');
+            let shieldIcons = '';
+            for(let i=0; i<shields; i++) {
+                shieldIcons += ' 🛡️';
+            }
+            if(shields === 0) shieldIcons = ' 없음';
+            display.innerHTML = `🛡️ 남은 방패:${shieldIcons}`;
+        }
+
+        function updateFlowUI() {
+            for (let i = 1; i <= 5; i++) {
+                const node = document.getElementById(`node${i}`);
+                node.className = 'round-node';
+                if (i < currentRound) {
+                    node.classList.add('clear');
+                } else if (i === currentRound) {
+                    node.classList.add('active');
+                }
+            }
+        }
+
+        function initGame() {
+            updateShieldUI();
+            updateFlowUI();
+            const playArea = document.getElementById('playArea');
+            playArea.innerHTML = '';
+
+            if (currentRound > 5) {
+                // 우승 연출 테마 생성
+                let ceremonyHtml = `
+                    <div class="result-screen result-success">👑 축하합니다! 최종 우승! 👑<br><span style="font-size:1.1rem; color:white;">모든 억까 확률을 극복하고 왕좌에 앉았습니다!</span></div>
+                    
+                    <div class="podium-container">
+                        <div class="champion-player">👑🙋‍♂️👑</div>
+                        <div class="gold-podium">1st PLACE</div>
+                    </div>
+                    
+                    <div class="crowd-cheering">🙌🎉🥳👏🤩🎈🎉🙌</div>
+                    <button class="action-btn" onclick="restartWholeGame()">처음부터 다시 정복</button>
+                `;
+                
+                playArea.innerHTML = ceremonyHtml;
+                
+                // 폭죽 이펙트 입자 뿌리기
+                for (let i = 0; i < 30; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = Math.random() * -20 + 'px';
+                    confetti.style.setProperty('--x-move', (Math.random() * 200 - 100) + 'px');
+                    confetti.style.backgroundColor = ['#f1c40f','#e94560','#4e9f3d','#00d2ff','#9b59b6'][Math.floor(Math.random()*5)];
+                    confetti.style.animationDelay = (Math.random() * 2) + 's';
+                    playArea.appendChild(confetti);
+                }
+                return;
+            }
+
+            if (currentRound > highestRoundReached) {
+                highestRoundReached = currentRound;
+            }
+
+            switch(currentRound) {
+                case 1:
+                    if (!fixedFish) {
+                        const randomIndex = Math.floor(Math.random() * fishPool.length);
+                        fixedFish = fishPool[randomIndex];
+                    }
+                    
+                    let badgeClass = "fish-normal";
+                    if(fixedFish.rarity === "easy") badgeClass = "fish-easy";
+                    if(fixedFish.rarity === "hard") badgeClass = "fish-hard";
+                    if(fixedFish.rarity === "legend") badgeClass = "fish-legend";
+
+                    playArea.innerHTML = `
+                        <div class="target-title">🎣 1라운드: 지정 타겟 낚시</div>
+                        <div style="font-size: 4rem; margin-bottom:10px;">${fixedFish.emoji}</div>
+                        <div class="target-info">목표 물고기: <span style="color:#f1c40f;">${fixedFish.name}</span></div>
+                        <div><span class="fish-badge ${badgeClass}">낚일 확률: ${fixedFish.prob}%</span></div>
+                        <p style="color:var(--muted-text); margin-top:15px; margin-bottom:15px;">※ 1R에서 실패하면 유지되지만, 2R 이상 진출 후 탈락해 돌아오면 물고기가 바뀝니다.</p>
+                        <button class="action-btn" id="fishBtn" onclick="pullFishingRod()">낚싯대 당기기!</button>
+                    `;
+                    break;
+                    
+                case 2:
+                    playArea.innerHTML = `
+                        <div class="target-title">🪙 2라운드: 동전 맞추기</div>
+                        <div class="target-info">동전 앞/뒤 맞추기 도전</div>
+                        <p style="color:var(--muted-text); margin-bottom:15px;">던진 동전의 면을 정확히 맞추면 통과합니다. (독립시행 확률 50%)</p>
+                        <div class="choices-container">
+                            <button class="choice-btn" onclick="playRound2('앞')">🪙 앞면 예측</button>
+                            <button class="choice-btn" onclick="playRound2('뒤')">🪙 뒷면 예측</button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 3:
+                    if (fixedSafeTile === null) {
+                        fixedSafeTile = Math.floor(Math.random() * 25) + 1;
+                    }
+
+                    let gridHtml = `
+                        <div class="target-title">💣 3라운드: 지뢰 매트릭스</div>
+                        <div class="target-info" style="color:#d83a56;">25칸 중 단 1칸만 안전 발판 (생존율 4%)</div>
+                        <p style="color:var(--muted-text); margin-bottom:15px;">지뢰를 피해 안전지대를 골라야 합니다. (실패해도 방패 사용 시 정답 위치 유지!)</p>
+                        <div class="grid-5x5">
+                    `;
+                    for(let i=1; i<=25; i++) {
+                        gridHtml += `<div class="grid-tile" onclick="playRound3(${i})">❓</div>`;
+                    }
+                    gridHtml += `</div>`;
+                    playArea.innerHTML = gridHtml;
+                    break;
+
+                case 4:
+                    const doorCount = doorStagesConfig[currentDoorStage];
+                    let doorsHtml = `
+                        <div class="target-title">🚪 4라운드: 연속 문의 방</div>
+                        <div class="sub-indicator">진행 현황: ${currentDoorStage + 1} / 4 단계</div>
+                        <div class="target-info">총 ${doorCount}개의 문 중 단 하나의 진짜 문!</div>
+                        <p style="color:var(--muted-text); margin-bottom:15px;">2개 ➡️ 3개 ➡️ 4개 ➡️ 5개의 문을 한 번의 실수도 없이 전부 뚫어내야 합니다.</p>
+                        <div class="choices-container">
+                    `;
+                    for(let i=1; i<=doorCount; i++) {
+                        doorsHtml += `<button class="choice-btn" onclick="playRound4(${i})">🚪 문 ${i}</button>`;
+                    }
+                    doorsHtml += `</div>`;
+                    playArea.innerHTML = doorsHtml;
+                    break;
+                    
+                case 5:
+                    const currentProb = 100 - (currentSwordEnhance * 5);
+                    
+                    let swordIcon = "⚔️";
+                    let glowStyle = "sword-normal";
+                    
+                    if (currentSwordEnhance >= 3 && currentSwordEnhance <= 5) {
+                        swordIcon = "🗡️✨";
+                        glowStyle = "sword-rare";
+                    } else if (currentSwordEnhance >= 6 && currentSwordEnhance <= 7) {
+                        swordIcon = "🔥⚔️🔥";
+                        glowStyle = "sword-epic";
+                    } else if (currentSwordEnhance >= 8 && currentSwordEnhance <= 9) {
+                        swordIcon = "⚡🔱⚡";
+                        glowStyle = "sword-ancient";
+                    }
+
+                    playArea.innerHTML = `
+                        <div class="target-title">⚔️ 최종 5라운드: 10강 절대검 도전</div>
+                        <div class="sub-indicator">현재 무기 상태: +${currentSwordEnhance} 검</div>
+                        <div class="sword-display ${glowStyle}">${swordIcon}</div>
+                        <div class="target-info">이번 단계 성공 확률: <span style="color:#e94560;">${currentProb}%</span></div>
+                        <p style="color:var(--muted-text); margin-bottom:15px;">마지막 관문! +10강 달성 시 최종 우승! 실패하면 처음부터 다시 해야 합니다.</p>
+                        <button class="action-btn" onclick="playRound5(${currentProb})">+${currentSwordEnhance + 1} 강화 시도</button>
+                    `;
+                    break;
+            }
+        }
+
+        function triggerGameOver(reason) {
+            const playArea = document.getElementById('playArea');
+            
+            let buttonsHtml = '';
+            if (shields > 0) {
+                buttonsHtml += `<button class="action-btn" style="background-color: #3498db; margin-right: 10px;" onclick="useShield()">🛡️ 방패 사용 (남은 개수: ${shields}개)</button>`;
+            } else {
+                buttonsHtml += `<p style="color: #d83a56; margin-bottom: 15px; font-weight: bold;">사용할 수 있는 방패가 없습니다!</p>`;
+            }
+            buttonsHtml += `<button class="action-btn" onclick="acceptDeath()">💀 그냥 죽고 1R 복귀</button>`;
+
+            playArea.innerHTML = `
+                <div class="result-screen result-fail">💥 탈락 위기! 💥<br><span style="font-size:1.1rem; color:var(--muted-text);">${reason}</span></div>
+                <p style="color:#b0b0b0; margin-bottom: 20px;">방패를 사용해 현재 위치에서 다시 도전하시겠습니까?</p>
+                <div class="choices-container">
+                    ${buttonsHtml}
+                </div>
+            `;
+        }
+
+        function useShield() {
+            if (shields > 0) {
+                shields--;
+                initGame();
+            }
+        }
+
+        function acceptDeath() {
+            shields = 10; 
+            currentDoorStage = 0;
+            currentSwordEnhance = 0;
+            fixedSafeTile = null; 
+
+            if (highestRoundReached >= 2) {
+                fixedFish = null; 
+            }
+            
+            highestRoundReached = 1;
+            currentRound = 1;
+
+            const playArea = document.getElementById('playArea');
+            playArea.innerHTML = `
+                <div class="result-screen result-fail">💥 GAME OVER 💥<br><span style="font-size:1.1rem; color:var(--muted-text);">기존 기록이 전부 초기화되었습니다.</span></div>
+                <p style="color:#b0b0b0; margin-bottom:10px;">2R 이상 진출 상태에서 사망했으므로 새로운 물고기가 배정되며, 방패가 10개로 완전히 충전되었습니다!</p>
+                <button class="action-btn" onclick="restartWholeGame()">1라운드부터 재도전</button>
+            `;
+        }
+
+        function restartWholeGame() {
+            currentRound = 1;
+            fixedSafeTile = null;
+            initGame();
+        }
+
+        function nextRound() {
+            currentRound++;
+            initGame();
+        }
+
+        // --- 1라운드: 낚시 ---
+        function pullFishingRod() {
+            const playArea = document.getElementById('playArea');
+            playArea.innerHTML = `
+                <div class="fishing-bobber active" id="bobber">❗</div>
+                <div class="target-info">[${fixedFish.name}]과 사투를 벌이는 중...</div>
+            `;
+
+            setTimeout(() => {
+                const roll = Math.random() * 100;
+                if (roll <= fixedFish.prob) {
+                    playArea.innerHTML = `
+                        <div class="result-screen result-success">🐟 낚시 대성공! 🐟<br><span style="font-size:1.1rem; color:white;">목표였던 [${fixedFish.name}]을 낚았습니다!</span></div>
+                        <button class="action-btn" onclick="nextRound()">2라운드 진입</button>
+                    `;
+                } else {
+                    triggerGameOver(`[${fixedFish.name}]을 낚는 데 실패해 낚싯줄이 끊어졌습니다.`);
+                }
+            }, 1000);
+        }
+
+        // --- 2라운드: 동전 ---
+        function playRound2(prediction) {
+            const playArea = document.getElementById('playArea');
+            let coin = Math.random() < 0.5 ? '앞' : '뒤';
+            let isWin = (coin === prediction);
+            let logText = `선택: ${prediction}면 | 결과: [${coin}면]`;
+
+            if(isWin) {
+                playArea.innerHTML = `
+                    <div class="result-screen result-success">🪙 동전 예측 성공! 🪙</div>
+                    <p style="color:var(--muted-text); margin-bottom:20px; font-size:1rem;">${logText}</p>
+                    <button class="action-btn" onclick="nextRound()">3라운드 진입</button>
+                `;
+            } else {
+                triggerGameOver(`동전 맞추기에 실패했습니다.<br><span style="font-size:0.95rem; color:#ccc;">${logText}</span>`);
+            }
+        }
+
+        // --- 3라운드: 지뢰 매트릭스 ---
+        function playRound3(chosenTile) {
+            if(chosenTile === fixedSafeTile) {
+                fixedSafeTile = null; 
+                const playArea = document.getElementById('playArea');
+                playArea.innerHTML = `
+                    <div class="result-screen result-success">✨ 기적적인 생존! ✨<br><span style="font-size:1.1rem; color:white;">4%의 생존 발판을 정확히 밟아 탈출했습니다!</span></div>
+                    <button class="action-btn" onclick="nextRound()">4라운드 진입</button>
+                `;
+            } else {
+                triggerGameOver(`5x5 지뢰밭의 ${chosenTile}번 타일 아래 매설된 대인 지뢰가 폭발했습니다.`);
+            }
+        }
+
+        // --- 4라운드: 문의 방 ---
+        function playRound4(chosenDoor) {
+            const maxDoors = doorStagesConfig[currentDoorStage];
+            const safeDoor = Math.floor(Math.random() * maxDoors) + 1;
+            const playArea = document.getElementById('playArea');
+            
+            if(chosenDoor === safeDoor) {
+                if (currentDoorStage === doorStagesConfig.length - 1) {
+                    currentDoorStage = 0; 
+                    playArea.innerHTML = `
+                        <div class="result-screen result-success">🔓 문 탈출 최종 성공! 🔓<br><span style="font-size:1.1rem; color:white;">5개 문 관문까지 전부 돌파하셨습니다!</span></div>
+                        <button class="action-btn" onclick="nextRound()">최종 5라운드 진입</button>
+                    `;
+                } else {
+                    currentDoorStage++;
+                    playArea.innerHTML = `
+                        <div class="result-screen result-success">✨ 단계 통과! ✨<br><span style="font-size:1.1rem; color:white;">다음 문 세트로 이동합니다.</span></div>
+                        <button class="action-btn" onclick="initGame()">다음 단계 진행</button>
+                    `;
+                }
+            } else {
+                triggerGameOver(`${maxDoors}개의 문 단계 중 오답 함정을 밟았습니다.`);
+            }
+        }
+
+        // --- 최종 5라운드: 절대검 강화하기 (+10강) ---
+        function playRound5(successProbability) {
+            const playArea = document.getElementById('playArea');
+            const roll = Math.random() * 100;
+            
+            if(roll <= successProbability) {
+                currentSwordEnhance++;
+                if (currentSwordEnhance === 10) {
+                    currentRound++; 
+                    initGame();
+                } else {
+                    playArea.innerHTML = `
+                        <div class="result-screen result-success">✨ 강화 성공! (+${currentSwordEnhance}) ✨<br><span style="font-size:1.1rem; color:white;">검의 외형과 오오라가 더욱 강력하게 진화합니다.</span></div>
+                        <button class="action-btn" onclick="initGame()">다음 강화 시도</button>
+                    `;
+                }
+            } else {
+                triggerGameOver(`최종 라운드 +${currentSwordEnhance} 강화 도중 주문서 폭발로 검이 산산조각 났습니다.`);
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
